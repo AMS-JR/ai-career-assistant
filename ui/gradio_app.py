@@ -3,7 +3,7 @@
 # =============================================
 
 import gradio as gr
-from orchestrator import run_pipeline
+from pipeline import run_pipeline
 
 
 def run_app():
