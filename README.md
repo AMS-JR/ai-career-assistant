@@ -5,6 +5,13 @@
 # Each section below should be split into its own file as indicated.
 
 # =============================================
+# Collaborators
+# =============================================
+# [AMS-JR](https://github.com/AMS-JR)
+# [Jones Omoyibo] (https://github.com/Benklins)
+# [ Williams Afotey Botchway ] (https://github.com/wafotey)
+
+# =============================================
 # PROJECT STRUCTURE
 # =============================================
 # project/
