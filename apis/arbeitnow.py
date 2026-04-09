@@ -2,8 +2,9 @@
 # apis/arbeitnow.py
 # =============================================
 import requests
+from agents import Agent, Runner, function_tool
 
-
+@function_tool
 def fetch_arbeitnow_jobs():
     url = "https://www.arbeitnow.com/api/job-board-api"
     data = requests.get(url).json()

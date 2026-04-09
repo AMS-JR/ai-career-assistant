@@ -1,31 +1,34 @@
 # =============================================
 # agents/aggregator.py
 # =============================================
-
+from agents import Agent
 
 def aggregate_jobs(ranked_jobs: list, top_n: int = 10) -> list:
     """
-    Clean + finalize results.
-
-    Responsibilities:
-    - Deduplicate
-    - Keep best score
-    - Sort
-    - Limit output
+    Aggregator logic:
+    - Remove duplicates (based on job id or title)
+    - Sort by score descending
+    - Return top N
     """
-
-    unique = {}
+    seen = set()
+    unique_jobs = []
 
     for item in ranked_jobs:
-        job = item["job"]
-        score = item["score"]
+        job_id = item["job"].get("id") or item["job"].get("title")
+        if job_id not in seen:
+            seen.add(job_id)
+            unique_jobs.append(item)
 
-        key = f"{job.get('title')}_{job.get('company')}"
+    # Sort descending by score
+    sorted_jobs = sorted(unique_jobs, key=lambda x: x["score"], reverse=True)
 
-        if key not in unique or unique[key]["score"] < score:
-            unique[key] = item
+    # Return top N
+    return sorted_jobs[:top_n]
 
-    result = list(unique.values())
-    result.sort(key=lambda x: x["score"], reverse=True)
 
-    return result[:top_n]
+# ✅ Define AggregatorAgent
+AggregatorAgent = Agent(
+    name="AggregatorAgent",
+    instructions="remove duplicates, sort by highest score, and return top N matches.",
+    run=aggregate_jobs
+)

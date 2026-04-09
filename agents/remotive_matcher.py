@@ -2,8 +2,8 @@
 # agents/matcher.py
 # =============================================
 
-
-def match_jobs(profile: dict, jobs: list) -> list:
+# agent that uses remotive api as a tool
+def match_remotive_jobs(profile: dict, jobs: list) -> list:
     """
     Basic keyword filtering based on skills.
     """

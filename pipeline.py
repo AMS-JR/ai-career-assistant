@@ -7,9 +7,13 @@ from agents.resume_parser import parse_resume
 from agents.matcher import match_jobs
 from agents.ranking import rank_jobs
 from agents.aggregator import aggregate_jobs
-from apis.remotive import fetch_remotive_jobs
-from apis.arbeitnow import fetch_arbeitnow_jobs
+from agents.RankingAgent import RankingAgent
+from agents.remotive_matcher import match_remotive_jobs
+from agents.arbeitnow_matcher import match_arbeitnow_jobs
 
+
+import asyncio
+from agents import Runner
 
 def run_pipeline():
     """Main system workflow."""
@@ -20,22 +24,29 @@ def run_pipeline():
     # 2. Parse profile
     profile = parse_resume(text)
 
-    # 3. Fetch jobs (parallel conceptually)
-    remotive_jobs = fetch_remotive_jobs()
-    arbeitnow_jobs = fetch_arbeitnow_jobs()
+    # 3. Async job matching
+    async def run_parallel_agents():
+        remotive_task = Runner.run(match_remotive_jobs, text)
+        arbeitnow_task = Runner.run(match_arbeitnow_jobs, text)
 
-    # 4. Match
-    matched_1 = match_jobs(profile, remotive_jobs)
-    matched_2 = match_jobs(profile, arbeitnow_jobs)
+        remotive_result, arbeitnow_result = await asyncio.gather(
+            remotive_task,
+            arbeitnow_task
+        )
+        # 4. Combine matches
+        all_jobs = remotive_result.final_output + arbeitnow_result.final_output
+        return all_jobs
 
-    # 5. Combine
-    all_jobs = matched_1 + matched_2
+    # 🔥 Run async function properly
+    all_jobs = asyncio.run(run_parallel_agents())
 
-    # 6. Rank
-    ranked_jobs = rank_jobs(profile, all_jobs)
+    # # 4. Combine matches
+    # all_jobs = remotive_jobs + arbeitnow_jobs
 
-    # 7. Aggregate (IMPORTANT STEP)
-    final_jobs = aggregate_jobs(ranked_jobs)
+    # 5. Rank
+    ranked_result = RankingAgent.run(profile, all_jobs)
+
+    # 6. Aggregate top matches
+    final_jobs = AggregatorAgent.run(ranked_jobs, top_n=50)
 
     return final_jobs
-

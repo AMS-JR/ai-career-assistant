@@ -2,8 +2,9 @@
 # apis/remotive.py
 # =============================================
 import requests
+from agents import Agent, Runner, function_tool
 
-
+@function_tool
 def fetch_remotive_jobs():
     url = "https://remotive.com/api/remote-jobs"
     data = requests.get(url).json()

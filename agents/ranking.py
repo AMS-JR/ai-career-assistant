@@ -1,13 +1,12 @@
 # =============================================
 # agents/ranking.py
 # =============================================
-
+from agents import Agent
 
 def score_job(profile: dict, job: dict) -> int:
     """
-    Score job based on skill overlap.
+    Score a single job based on skill overlap.
     """
-
     skills = profile.get("skills", [])
     if not skills:
         return 0
@@ -24,16 +23,20 @@ def score_job(profile: dict, job: dict) -> int:
 
 def rank_jobs(profile: dict, jobs: list) -> list:
     """
-    Assign scores to ALL jobs.
-    No deduplication here.
+    Rank a list of jobs.
     """
-
     ranked = []
-
     for job in jobs:
         ranked.append({
             "job": job,
             "score": score_job(profile, job)
         })
-
     return ranked
+
+
+# ✅ Define RankingAgent
+RankingAgent = Agent(
+    name="RankingAgent",
+    instructions="Given a profile and a list of jobs, score each job based on skill overlap and return the scores.",
+    run=rank_jobs  # pass the function as the agent's execution logic
+)
