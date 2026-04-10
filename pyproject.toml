@@ -1,3 +1,7 @@
+[build-system]
+requires = ["hatchling>=1.18.0"]
+build-backend = "hatchling.build"
+
 [project]
 name = "ai-career-assistant"
 version = "0.1.0"
@@ -17,7 +21,18 @@ dependencies = [
 ]
 
 [project.scripts]
-career-assistant = "main:main"
+career-assistant = "career_assistant.main:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["career_assistant"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"career_assistant/ui/html" = "career_assistant/ui/html"
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+pythonVersion = "3.12"
 
 [dependency-groups]
 dev = [

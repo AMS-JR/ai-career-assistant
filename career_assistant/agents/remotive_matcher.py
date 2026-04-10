@@ -10,6 +10,7 @@ from agents import Agent, Runner
 from career_assistant.agent_tools.remotive import fetch_remotive_jobs, fetch_remotive_jobs_sync
 from career_assistant.agents.job_fallback import profile_search_queries
 from career_assistant.agents.matcher_shared import parse_llm_job_array
+from career_assistant.utils.agent_llm_kw import agent_kwargs_basic
 from career_assistant.utils.llm_payload import profile_json_for_llm
 from career_assistant.utils.settings import (
     get_job_tool_max_results,
@@ -200,6 +201,7 @@ async def match_remotive_jobs(profile: dict) -> list:
         name="RemotiveMatcher",
         instructions=_instructions(profile_json),
         tools=[fetch_remotive_jobs],
+        **agent_kwargs_basic(),
     )
 
     result = await Runner.run(

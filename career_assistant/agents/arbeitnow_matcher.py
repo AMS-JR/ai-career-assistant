@@ -6,6 +6,7 @@ from agents import Agent, Runner
 
 from career_assistant.agent_tools.arbeitnow import fetch_arbeitnow_jobs
 from career_assistant.agents.matcher_shared import parse_llm_job_array
+from career_assistant.utils.agent_llm_kw import agent_kwargs_basic
 from career_assistant.utils.llm_payload import profile_json_for_llm
 from career_assistant.utils.settings import (
     get_matcher_max_turns,
@@ -57,6 +58,7 @@ async def match_arbeitnow_jobs(profile: dict) -> list:
         name="ArbeitnowMatcher",
         instructions=_instructions(profile_json),
         tools=[fetch_arbeitnow_jobs],
+        **agent_kwargs_basic(),
     )
 
     result = await Runner.run(

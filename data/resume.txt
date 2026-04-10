@@ -1,11 +1,11 @@
 JOHN DOE
-Anytown, USA · +1-555-555-5555 · johndoe@example.com
+Anytown, USA  | +1-555-555-5555  | johndoe@example.com
 https://github.com/johndoe
 
 JAVA SOFTWARE ENGINEER
 Results-driven Software Engineer with 6+ years of experience building scalable web and mobile applications, specializing in Java backend and full-stack development. Delivered solutions across e-commerce, edtech, HR, Fintech, and small business platforms. Skilled in designing RESTful APIs, integrating third-party services, and optimizing performance. Proficient in Java, Spring Boot, React, Next.js, PostgreSQL, and CI/CD using GitHub Actions and Docker. Experienced in Agile and all phases of the SDLC.
-· Microservices and Modular Application Design · Database Design and Management · Clean Architecture
-· Performance Optimization and Scalability · Dependency Injection and Inversion of Control
+- Microservices and Modular Application Design | Database Design and Management | Clean Architecture
+- Performance Optimization and Scalability | Dependency Injection and Inversion of Control
 
 Languages: Java, JavaScript, TypeScript
 Web: HTML, CSS, React, Bootstrap, Tailwind CSS, Node.js
@@ -22,7 +22,7 @@ Application/Software: CRM, CMS, WordPress, Mailchimp, Payment APIs
 
 PROFESSIONAL EXPERIENCE
 
-SOFTWARE COMPANY 1 · 01/2021 – 06/2025
+SOFTWARE COMPANY 1  | 01/2021 - 06/2025
 Software Engineer
 Architected scalable marketplaces, fintech, and learning platforms on cloud infrastructure.
 - Built scalable backend services with Java and Spring Boot, enabling secure auth and API documentation.
@@ -35,7 +35,7 @@ Architected scalable marketplaces, fintech, and learning platforms on cloud infr
 - Independently built full-stack platforms with frontend and backend integration.
 Technologies Used: Java, Spring Boot, Node.js, Next.js, Tailwind, Kafka, Docker, Cloud, CI/CD, PostgreSQL, MySQL, MongoDB, Redis, Swagger, Jest, JUnit, OAuth, JWT, Prometheus, Grafana.
 
-SOFTWARE COMPANY 2 · 03/2020 – 09/2020
+SOFTWARE COMPANY 2  | 03/2020 - 09/2020
 Backend Engineer
 - Developed and maintained high-performance microservices and secure RESTful APIs.
 - Implemented JWT-based authentication and authorization for protected content.
@@ -44,7 +44,7 @@ Backend Engineer
 - Ensured backend reliability via unit tests and API validations.
 Technologies Used: Java, Spring Boot, Kafka, Docker, PostgreSQL, JWT, React, JUnit, Postman, Git.
 
-SOFTWARE COMPANY 3 · 10/2019 – 03/2020
+SOFTWARE COMPANY 3  | 10/2019 - 03/2020
 Software Developer
 - Designed and scaled RESTful microservices enabling modular backend services.
 - Automated report generation, reducing manual workload significantly.
@@ -52,7 +52,7 @@ Software Developer
 - Containerized services with Docker and revamped frontend components for unified UX.
 Technologies Used: Java, Spring Boot, Kafka, Docker, PostgreSQL, MongoDB, React, Material UI, Git.
 
-SOFTWARE COMPANY 4 – Software Engineer · 01/2019 – 07/2019
+SOFTWARE COMPANY 4 - Software Engineer  | 01/2019 - 07/2019
 - Developed responsive web applications, improving UX and performance.
 - Built and consumed RESTful APIs for seamless data communication.
 - Designed and optimized SQL/MySQL database queries.
