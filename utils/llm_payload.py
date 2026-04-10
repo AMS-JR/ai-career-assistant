@@ -1,5 +1,5 @@
 # =============================================
-# career_assistant.utils.llm_payload - keep LLM inputs within context limits
+# utils.llm_payload - keep LLM inputs within context limits
 # =============================================
 
 from __future__ import annotations

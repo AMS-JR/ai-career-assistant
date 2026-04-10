@@ -1,5 +1,5 @@
 # =============================================
-# career_assistant.agents.resume_parser
+# career_agents.resume_parser
 # =============================================
 
 import json
@@ -7,10 +7,10 @@ import re
 
 from agents import Agent, Runner
 
-from career_assistant.utils.agent_llm_kw import agent_kwargs_parser
-from career_assistant.utils.async_bridge import run_coroutine_sync
-from career_assistant.utils.llm_payload import truncate_chars
-from career_assistant.utils.settings import get_resume_parse_max_input_chars, get_resume_parser_max_turns
+from utils.agent_llm_kw import agent_kwargs_parser
+from utils.async_bridge import run_coroutine_sync
+from utils.llm_payload import truncate_chars
+from utils.settings import get_resume_parse_max_input_chars, get_resume_parser_max_turns
 
 
 def _parse_json_object_from_llm(raw: str) -> dict:

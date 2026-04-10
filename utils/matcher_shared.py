@@ -1,5 +1,5 @@
 # =============================================
-# career_assistant.agents.matcher_shared - parse matcher LLM JSON output
+# career_agents.matcher_shared - parse matcher LLM JSON output
 # =============================================
 
 from __future__ import annotations

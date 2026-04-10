@@ -1,5 +1,5 @@
 # =============================================
-# career_assistant.utils.job_recency - posted-date handling per board
+# utils.job_recency - posted-date handling per board
 # =============================================
 
 from __future__ import annotations

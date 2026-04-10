@@ -1,5 +1,5 @@
 # =============================================
-# career_assistant.agents.aggregator
+# career_agents.aggregator
 # =============================================
 
 import asyncio
@@ -9,11 +9,11 @@ import re
 
 from agents import Agent, Runner
 
-from career_assistant.agents.arbeitnow_matcher import match_arbeitnow_jobs
-from career_assistant.agents.job_fallback import fetch_fallback_jobs_async
-from career_assistant.agents.remotive_matcher import match_remotive_jobs
-from career_assistant.utils.agent_llm_kw import agent_kwargs_basic
-from career_assistant.utils.settings import (
+from career_agents.arbeitnow_matcher import match_arbeitnow_jobs
+from utils.job_fallback import fetch_fallback_jobs_async
+from career_agents.remotive_matcher import match_remotive_jobs
+from utils.agent_llm_kw import agent_kwargs_basic
+from utils.settings import (
     get_aggregator_description_max_chars,
     get_aggregator_max_jobs,
     get_direct_job_fetch_only,

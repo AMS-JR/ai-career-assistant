@@ -1,13 +1,13 @@
 # =============================================
-# career_assistant.agents.orchestrator - end-to-end workflow
+# career_agents.orchestrator - end-to-end workflow
 # =============================================
 
 import asyncio
 import json
 
-from career_assistant.agents.aggregator import aggregate_jobs
-from career_assistant.agents.resume_parser import parse_resume_async
-from career_assistant.utils.async_bridge import run_coroutine_sync
+from career_agents.aggregator import aggregate_jobs
+from career_agents.resume_parser import parse_resume_async
+from utils.async_bridge import run_coroutine_sync
 
 DEFAULT_RESUME_PDF = "data/resume.pdf"
 
@@ -38,7 +38,7 @@ def run_matching_for_profile(profile: dict) -> list:
 
 async def run_pipeline_async() -> list:
     """Full pipeline: default file -> text -> profile -> matches (single event-loop run)."""
-    from career_assistant.utils.documents import extract_resume_text
+    from utils.documents import extract_resume_text
 
     text = await asyncio.to_thread(extract_resume_text, DEFAULT_RESUME_PDF)
     profile = await parse_resume_from_text_async(text)

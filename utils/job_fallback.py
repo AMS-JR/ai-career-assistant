@@ -1,5 +1,5 @@
 # =============================================
-# career_assistant.agents.job_fallback - direct API listings when LLM matchers return nothing
+# career_agents.job_fallback - direct API listings when LLM matchers return nothing
 # =============================================
 
 from __future__ import annotations
@@ -9,11 +9,11 @@ import logging
 import re
 from typing import Any
 
-from career_assistant.agent_tools.arbeitnow import fetch_arbeitnow_feed_page_sync
-from career_assistant.agent_tools.remotive import fetch_remotive_jobs_sync
-from career_assistant.utils.job_recency import filter_raw_jobs_by_recency
-from career_assistant.utils.llm_payload import strip_html_to_text
-from career_assistant.utils.settings import (
+from agent_tools.arbeitnow import fetch_arbeitnow_feed_page_sync
+from agent_tools.remotive import fetch_remotive_jobs_sync
+from utils.job_recency import filter_raw_jobs_by_recency
+from utils.llm_payload import strip_html_to_text
+from utils.settings import (
     get_arbeitnow_fallback_max_pages,
     get_job_listing_max_age_days,
 )

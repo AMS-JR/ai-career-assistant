@@ -1,5 +1,5 @@
 # =============================================
-# career_assistant.utils.documents - extract plain text from resume files
+# utils.documents - extract plain text from resume files
 # =============================================
 
 import subprocess

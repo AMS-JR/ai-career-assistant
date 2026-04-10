@@ -1,5 +1,5 @@
 # =============================================
-# career_assistant.utils.profile_storage - local vs vector-store strategy
+# utils.profile_storage - local vs vector-store strategy
 # =============================================
 
 """
@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from career_assistant.utils.settings import (
+from utils.settings import (
     ProfileBackend,
     get_openai_vector_store_id,
     get_profile_backend,

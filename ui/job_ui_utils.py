@@ -1,5 +1,5 @@
 # =============================================
-# career_assistant.ui.job_ui_utils — shared job list / score helpers
+# ui.job_ui_utils — shared job list / score helpers
 # =============================================
 
 from __future__ import annotations

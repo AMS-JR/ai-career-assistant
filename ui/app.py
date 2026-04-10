@@ -1,5 +1,5 @@
 # =============================================
-# career_assistant.ui.app - Gradio entrypoint
+# ui.app - Gradio entrypoint
 # =============================================
 from __future__ import annotations
 import html
@@ -12,15 +12,15 @@ from typing import Any
 import gradio as gr
 from gradio.themes import GoogleFont, Base
 from gradio.themes import sizes as theme_sizes
-from career_assistant.agents.resume_tailor import tailor_resume_for_job
-from career_assistant.agents.orchestrator import parse_resume_from_text, run_matching_for_profile
-from career_assistant.utils.profile_storage import sync_resume_to_vector_store
-from career_assistant.utils.documents import extract_resume_text
-from career_assistant.utils.job_relevance_filter import filter_jobs_by_profile_keywords
-from career_assistant.utils.settings import get_relax_profile_keyword_job_filter
+from career_agents.resume_tailor import tailor_resume_for_job
+from career_agents.orchestrator import parse_resume_from_text, run_matching_for_profile
+from utils.profile_storage import sync_resume_to_vector_store
+from utils.documents import extract_resume_text
+from utils.job_relevance_filter import filter_jobs_by_profile_keywords
+from utils.settings import get_relax_profile_keyword_job_filter
 
-from career_assistant.ui.job_ui_utils import sort_jobs_by_match
-from career_assistant.ui.render_html import (
+from ui.job_ui_utils import sort_jobs_by_match
+from ui.render_html import (
     STATUS_IDLE_HTML,
     TAILORED_PLACEHOLDER,
     alert_html,

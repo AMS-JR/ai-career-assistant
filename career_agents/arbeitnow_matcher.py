@@ -1,14 +1,14 @@
 # =============================================
-# career_assistant.agents.arbeitnow_matcher
+# career_agents.arbeitnow_matcher
 # =============================================
 
 from agents import Agent, Runner
 
-from career_assistant.agent_tools.arbeitnow import fetch_arbeitnow_jobs
-from career_assistant.agents.matcher_shared import parse_llm_job_array
-from career_assistant.utils.agent_llm_kw import agent_kwargs_basic
-from career_assistant.utils.llm_payload import profile_json_for_llm
-from career_assistant.utils.settings import (
+from agent_tools.arbeitnow import fetch_arbeitnow_jobs
+from utils.matcher_shared import parse_llm_job_array
+from utils.agent_llm_kw import agent_kwargs_basic
+from utils.llm_payload import profile_json_for_llm
+from utils.settings import (
     get_matcher_max_turns,
     get_matcher_min_overall_score,
     get_matcher_min_skill_percent,

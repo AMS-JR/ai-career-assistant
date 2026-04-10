@@ -1,5 +1,5 @@
 # =============================================
-# career_assistant.utils.job_relevance_filter
+# utils.job_relevance_filter
 # Drop listings with no keyword overlap vs profile title/skills (post-fetch).
 # =============================================
 

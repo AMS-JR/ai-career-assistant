@@ -1,5 +1,5 @@
 # =============================================
-# career_assistant.utils.job_api_cache - short TTL cache for public job APIs
+# utils.job_api_cache - short TTL cache for public job APIs
 # =============================================
 
 from __future__ import annotations

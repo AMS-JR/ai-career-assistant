@@ -1,5 +1,5 @@
 # =============================================
-# career_assistant.ui.render_html — load templates from ui/html/
+# ui.render_html — load templates from ui/html/
 # =============================================
 
 from __future__ import annotations
@@ -10,9 +10,9 @@ from pathlib import Path
 from typing import Any
 from string import Template
 
-from career_assistant.ui.job_ui_utils import fmt_pct, sort_jobs_by_match
-from career_assistant.utils.profile_storage import validate_profile_backend
-from career_assistant.utils.settings import (
+from ui.job_ui_utils import fmt_pct, sort_jobs_by_match
+from utils.profile_storage import validate_profile_backend
+from utils.settings import (
     ProfileBackend,
     get_openai_vector_store_id,
     get_profile_backend,

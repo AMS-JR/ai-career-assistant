@@ -1,5 +1,5 @@
 # =============================================
-# career_assistant.utils.async_bridge - sync/async boundary
+# utils.async_bridge - sync/async boundary
 # =============================================
 
 from __future__ import annotations

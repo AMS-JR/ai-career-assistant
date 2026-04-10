@@ -1,5 +1,5 @@
 # =============================================
-# career_assistant.utils.settings - env-driven configuration
+# utils.settings - env-driven configuration
 # =============================================
 
 from __future__ import annotations
@@ -10,8 +10,8 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-# Project root = parent of career_assistant package (.../career_assistant/utils, up 2)
-_ROOT = Path(__file__).resolve().parent.parent.parent
+# Project root = parent of ``utils`` (repo root).
+_ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(_ROOT / ".env")
 load_dotenv()
 

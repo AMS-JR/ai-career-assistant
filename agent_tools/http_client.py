@@ -1,5 +1,5 @@
 # =============================================
-# career_assistant.agent_tools.http_client - pooled HTTP for job APIs
+# agent_tools.http_client - pooled HTTP for job APIs
 # =============================================
 
 from __future__ import annotations
@@ -8,7 +8,7 @@ import atexit
 
 import httpx
 
-from career_assistant.utils.settings import get_http_timeout_seconds
+from utils.settings import get_http_timeout_seconds
 
 _client: httpx.Client | None = None
 

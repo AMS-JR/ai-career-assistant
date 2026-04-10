@@ -1,15 +1,15 @@
 # =============================================
-# career_assistant.agents.resume_tailor - LLM tailors CV toward one job
+# career_agents.resume_tailor - LLM tailors CV toward one job
 # =============================================
 
 import json
 
 from agents import Agent, Runner
 
-from career_assistant.utils.agent_llm_kw import agent_kwargs_tailor
-from career_assistant.utils.async_bridge import run_coroutine_sync
-from career_assistant.utils.llm_payload import profile_json_for_llm, slim_job_for_tailor
-from career_assistant.utils.settings import (
+from utils.agent_llm_kw import agent_kwargs_tailor
+from utils.async_bridge import run_coroutine_sync
+from utils.llm_payload import profile_json_for_llm, slim_job_for_tailor
+from utils.settings import (
     get_resume_tailor_max_turns,
     get_tailor_job_description_max_chars,
     get_tailor_profile_json_max_chars,

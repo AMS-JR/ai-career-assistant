@@ -1,5 +1,5 @@
 # =============================================
-# career_assistant.agent_tools.arbeitnow
+# agent_tools.arbeitnow
 # =============================================
 
 import json
@@ -8,11 +8,11 @@ from typing import Any
 
 from agents import function_tool
 
-from career_assistant.agent_tools.http_client import get_job_http_client
-from career_assistant.utils.job_api_cache import get_cached_job_list
-from career_assistant.utils.llm_payload import trim_api_jobs_for_llm
-from career_assistant.utils.job_recency import filter_raw_jobs_by_recency
-from career_assistant.utils.settings import (
+from agent_tools.http_client import get_job_http_client
+from utils.job_api_cache import get_cached_job_list
+from utils.llm_payload import trim_api_jobs_for_llm
+from utils.job_recency import filter_raw_jobs_by_recency
+from utils.settings import (
     get_job_api_cache_ttl_seconds,
     get_job_listing_max_age_days,
     get_job_tool_description_max_chars,
