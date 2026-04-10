@@ -10,13 +10,15 @@ from agents import Agent, Runner
 from career_assistant.agent_tools.remotive import fetch_remotive_jobs, fetch_remotive_jobs_sync
 from career_assistant.agents.job_fallback import profile_search_queries
 from career_assistant.agents.matcher_shared import parse_llm_job_array
+from career_assistant.utils.agent_llm_kw import agent_kwargs_basic
 from career_assistant.utils.llm_payload import profile_json_for_llm
 from career_assistant.utils.settings import (
-    get_agent_max_turns,
     get_job_tool_max_results,
+    get_matcher_max_turns,
     get_matcher_min_overall_score,
     get_matcher_min_skill_percent,
     get_matcher_profile_json_max_chars,
+    get_remotive_reconcile_query_cap,
 )
 
 logger = logging.getLogger(__name__)
@@ -53,7 +55,7 @@ def _build_remotive_canonical_maps(profile: dict) -> tuple[dict[int, str], dict[
     cap_tool = get_job_tool_max_results()
     by_id: dict[int, str] = {}
     by_key: dict[tuple[str, str], str] = {}
-    for q in profile_search_queries(profile)[:4]:
+    for q in profile_search_queries(profile)[: get_remotive_reconcile_query_cap()]:
         for cat in ("software-dev", None):
             batch = fetch_remotive_jobs_sync(q, cat, cap_tool)
             for row in batch:
@@ -128,6 +130,7 @@ def _instructions(profile_json: str) -> str:
     - **Pagination:** Remotive's public API has **no page/offset**—only ``search``, ``category``, ``limit``.
       To see more distinct listings, use **multiple tool calls** with different **search** strings (and optionally ``category=""`` for all categories). The API returns jobs sorted by **publication_date**; very old rows are already filtered server-side in the tool when dates exist.
     - Build **search** from the profile: job title, headline, top skills, and summary keywords (e.g. "senior python backend", "kubernetes aws").
+    - **Speed:** Prefer **1–3** focused tool calls total; add another only if the first call returned clearly too few rows.
     - Set **category** to **exactly one** slug from this list (invalid slugs are coerced to **software-dev**):
       software-dev, data, devops, design, marketing, product, sales, customer-support,
       finance-legal, hr, copywriting, business, teaching, medical-healthcare, legal, other.
@@ -198,12 +201,13 @@ async def match_remotive_jobs(profile: dict) -> list:
         name="RemotiveMatcher",
         instructions=_instructions(profile_json),
         tools=[fetch_remotive_jobs],
+        **agent_kwargs_basic(),
     )
 
     result = await Runner.run(
         agent,
         "Use fetch_remotive_jobs with search and category derived from the profile, then return the final JSON array of scored matches.",
-        max_turns=get_agent_max_turns(),
+        max_turns=get_matcher_max_turns(),
     )
 
     parsed = parse_llm_job_array(result.final_output or "")

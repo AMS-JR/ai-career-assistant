@@ -6,9 +6,10 @@ from agents import Agent, Runner
 
 from career_assistant.agent_tools.arbeitnow import fetch_arbeitnow_jobs
 from career_assistant.agents.matcher_shared import parse_llm_job_array
+from career_assistant.utils.agent_llm_kw import agent_kwargs_basic
 from career_assistant.utils.llm_payload import profile_json_for_llm
 from career_assistant.utils.settings import (
-    get_agent_max_turns,
+    get_matcher_max_turns,
     get_matcher_min_overall_score,
     get_matcher_min_skill_percent,
     get_matcher_profile_json_max_chars,
@@ -23,13 +24,13 @@ def _instructions(profile_json: str) -> str:
     **Candidate profile (JSON):**
     {profile_json}
 
-    **Step 1 — Call the Arbeitnow tool (multiple times as needed)**
+    **Step 1 — Call the Arbeitnow tool**
     The API is **paged** (``page=1``, ``page=2``, …). It does **not** take reliable arbitrary keyword search—use:
-    - **page** = 1, then 2, then 3, … for **pagination**. Each page returns a batch; the tool trims to its max. Stale rows (by ``created_at`` unix timestamp) are dropped when older than the configured max age.
+    - **page** = start with **1**; call **page=2** only if page=1 was thin and you need more rows. Avoid paging beyond what you need — **1–2 calls** usually suffice.
     - **remote_only** = true if the candidate clearly wants remote-only and the profile supports that; otherwise false.
     - **require_visa_sponsorship** = true only if the profile explicitly needs visa sponsorship.
 
-    Start with page=1 (and optional filters). If you need more coverage for matching, call again with page=2, page=3, etc.
+    Stale rows (by ``created_at`` unix timestamp) are dropped when older than the configured max age.
 
     **Step 2 — Score each returned job**
     **a) skill_match_percentage (0–100)** — overlap of candidate skills vs job description/tags.
@@ -57,12 +58,13 @@ async def match_arbeitnow_jobs(profile: dict) -> list:
         name="ArbeitnowMatcher",
         instructions=_instructions(profile_json),
         tools=[fetch_arbeitnow_jobs],
+        **agent_kwargs_basic(),
     )
 
     result = await Runner.run(
         agent,
         "Use fetch_arbeitnow_jobs with appropriate page and filter arguments, then return the final JSON array of scored matches.",
-        max_turns=get_agent_max_turns(),
+        max_turns=get_matcher_max_turns(),
     )
 
     parsed = parse_llm_job_array(result.final_output or "")

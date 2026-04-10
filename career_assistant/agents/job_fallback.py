@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 from typing import Any
@@ -12,7 +13,10 @@ from career_assistant.agent_tools.arbeitnow import fetch_arbeitnow_feed_page_syn
 from career_assistant.agent_tools.remotive import fetch_remotive_jobs_sync
 from career_assistant.utils.job_recency import filter_raw_jobs_by_recency
 from career_assistant.utils.llm_payload import strip_html_to_text
-from career_assistant.utils.settings import get_job_listing_max_age_days
+from career_assistant.utils.settings import (
+    get_arbeitnow_fallback_max_pages,
+    get_job_listing_max_age_days,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -96,16 +100,17 @@ def _arbeitnow_relevance_score(raw: dict[str, Any], tokens: set[str]) -> float:
 
 
 def ranked_arbeitnow_raw_jobs(
-    profile: dict[str, Any], *, max_pages: int = 4, cap: int = 22
+    profile: dict[str, Any], *, max_pages: int | None = None, cap: int = 22
 ) -> list[dict[str, Any]]:
     """
     Arbeitnow's HTTP API returns a general feed; query-string ``search`` does not filter.
     Pull several pages and rank rows against profile tokens.
     """
+    pages = max_pages if max_pages is not None else get_arbeitnow_fallback_max_pages()
     tokens = _profile_tokens(profile)
     scored: list[tuple[float, dict[str, Any]]] = []
     max_age = get_job_listing_max_age_days()
-    for page in range(1, max_pages + 1):
+    for page in range(1, pages + 1):
         chunk = fetch_arbeitnow_feed_page_sync(page)
         for raw in filter_raw_jobs_by_recency(chunk, arbeitnow=True, max_age_days=max_age):
             if isinstance(raw, dict):
@@ -154,15 +159,9 @@ def _normalized_job(raw: dict[str, Any], source: str) -> dict[str, Any]:
     }
 
 
-def fetch_fallback_jobs_sync(profile: dict[str, Any]) -> list[dict[str, Any]]:
-    """
-    Call Remotive (search works) and Arbeitnow (paged feed + client-side rank) without an LLM.
-    Used when matcher agents return an empty list so the UI still shows real openings.
-    """
+def _remotive_rows_fallback(profile: dict[str, Any]) -> list[dict[str, Any]]:
     queries = profile_search_queries(profile)
     primary = queries[0]
-    seen_urls: set[str] = set()
-    out: list[dict[str, Any]] = []
 
     remotive_rows = fetch_remotive_jobs_sync(primary, "software-dev", 25)
     if len(remotive_rows) < 8:
@@ -180,7 +179,18 @@ def fetch_fallback_jobs_sync(profile: dict[str, Any]) -> list[dict[str, Any]]:
         if u and u not in remotive_seen:
             remotive_seen.add(u)
             remotive_unique.append(row)
-    remotive_rows = remotive_unique
+    return remotive_unique
+
+
+def _merge_fallback_normalized(
+    remotive_rows: list[dict[str, Any]],
+    arbeitnow_raw: list[dict[str, Any]],
+    *,
+    primary_query: str,
+    extra_queries: list[str],
+) -> list[dict[str, Any]]:
+    seen_urls: set[str] = set()
+    out: list[dict[str, Any]] = []
 
     for row in remotive_rows:
         u = str(row.get("url") or "").strip()
@@ -188,16 +198,37 @@ def fetch_fallback_jobs_sync(profile: dict[str, Any]) -> list[dict[str, Any]]:
             seen_urls.add(u)
             out.append(_normalized_job(row, "Remotive"))
 
-    for raw in ranked_arbeitnow_raw_jobs(profile):
+    for raw in arbeitnow_raw:
         u = str(raw.get("url") or "").strip()
         if u and u not in seen_urls and u != "#":
             seen_urls.add(u)
             out.append(_normalized_job(raw, "Arbeitnow"))
 
     logger.info(
-        "Direct job board fallback: %d listings (primary_query=%r, extra_queries=%s)",
+        "Direct job board fetch: %d listings (primary_query=%r, extra_queries=%s)",
         len(out),
-        primary,
-        queries[1:3],
+        primary_query,
+        extra_queries,
     )
     return out[:40]
+
+
+def fetch_fallback_jobs_sync(profile: dict[str, Any]) -> list[dict[str, Any]]:
+    """
+    Call Remotive (search works) and Arbeitnow (paged feed + client-side rank) without an LLM.
+    Used when matcher agents return an empty list so the UI still shows real openings.
+    """
+    queries = profile_search_queries(profile)
+    rem = _remotive_rows_fallback(profile)
+    arb = ranked_arbeitnow_raw_jobs(profile)
+    return _merge_fallback_normalized(rem, arb, primary_query=queries[0], extra_queries=queries[1:3])
+
+
+async def fetch_fallback_jobs_async(profile: dict[str, Any]) -> list[dict[str, Any]]:
+    """Same as ``fetch_fallback_jobs_sync`` but Remotive and Arbeitnow work run in parallel."""
+    queries = profile_search_queries(profile)
+    rem, arb = await asyncio.gather(
+        asyncio.to_thread(_remotive_rows_fallback, profile),
+        asyncio.to_thread(ranked_arbeitnow_raw_jobs, profile),
+    )
+    return _merge_fallback_normalized(rem, arb, primary_query=queries[0], extra_queries=queries[1:3])

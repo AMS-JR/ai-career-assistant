@@ -6,10 +6,11 @@ import json
 
 from agents import Agent, Runner
 
+from career_assistant.utils.agent_llm_kw import agent_kwargs_tailor
 from career_assistant.utils.async_bridge import run_coroutine_sync
 from career_assistant.utils.llm_payload import profile_json_for_llm, slim_job_for_tailor
 from career_assistant.utils.settings import (
-    get_agent_max_turns,
+    get_resume_tailor_max_turns,
     get_tailor_job_description_max_chars,
     get_tailor_profile_json_max_chars,
 )
@@ -41,11 +42,12 @@ Produce the tailored Markdown resume now (only the document, no preamble or code
             "Stay truthful to the profile JSON: do not invent employers, degrees, or skills. "
             "Reorder and emphasize relevance to the job. "
             "Use ## headings (Professional Summary, Experience, Skills, Education). "
-            "Professional, concise tone."
+            "Professional, concise tone. Be concise: prefer shorter bullets over long prose."
         ),
+        **agent_kwargs_tailor(),
     )
 
-    result = await Runner.run(agent, user_message, max_turns=get_agent_max_turns())
+    result = await Runner.run(agent, user_message, max_turns=get_resume_tailor_max_turns())
     return (result.final_output or "").strip()
 
 

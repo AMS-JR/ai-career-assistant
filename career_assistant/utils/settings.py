@@ -114,6 +114,92 @@ def get_matcher_min_overall_score() -> int:
 
 
 def get_agent_max_turns() -> int:
-    """Max LLM↔tool turns per ``Runner.run`` (SDK default 10 is often too low for matchers)."""
+    """Legacy global cap; board matchers prefer :func:`get_matcher_max_turns` (default 14)."""
     v = int(os.getenv("AGENT_MAX_TURNS", "30"))
     return max(10, min(100, v))
+
+
+def get_resume_parser_max_turns() -> int:
+    """Parser has no tools — one JSON object; keep this low to avoid wasted rounds."""
+    v = int(os.getenv("RESUME_PARSER_MAX_TURNS", "3"))
+    return max(2, min(12, v))
+
+
+def get_matcher_max_turns() -> int:
+    """Remotive/Arbeitnow agents use tools; several calls + final JSON (default 14)."""
+    raw = os.getenv("MATCHER_MAX_TURNS", "").strip()
+    if raw:
+        v = int(raw)
+    else:
+        v = int(os.getenv("AGENT_MAX_TURNS", "14"))
+    return max(4, min(40, v))
+
+
+def get_job_aggregator_max_turns() -> int:
+    """JobAggregator returns a single index array — no tools."""
+    v = int(os.getenv("JOB_AGGREGATOR_MAX_TURNS", "3"))
+    return max(2, min(12, v))
+
+
+def get_resume_tailor_max_turns() -> int:
+    """Tailor agent: one Markdown document, no tools (single-shot; do not inherit AGENT_MAX_TURNS)."""
+    v = int(os.getenv("RESUME_TAILOR_MAX_TURNS", "6"))
+    return max(3, min(25, v))
+
+
+def get_skip_job_aggregator_llm() -> bool:
+    """If true, skip the dedupe/rank LLM and use score sort + URL dedupe only (much faster)."""
+    return os.getenv("SKIP_JOB_AGGREGATOR_LLM", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+    )
+
+
+def get_remotive_reconcile_query_cap() -> int:
+    """Profile search queries used when building Remotive URL canonical maps (post-agent HTTP)."""
+    v = int(os.getenv("REMOTIVE_RECONCILE_QUERY_CAP", "2"))
+    return max(1, min(4, v))
+
+
+def get_agent_model_name() -> str | None:
+    """If set, passed to ``Agent(model=...)`` so all career-assistant agents use the same chat model."""
+    for key in ("OPENAI_CAREER_MODEL", "OPENAI_DEFAULT_MODEL", "OPENAI_MODEL"):
+        v = os.getenv(key, "").strip()
+        if v:
+            return v
+    return None
+
+
+def get_direct_job_fetch_only() -> bool:
+    """
+    If true, skip Remotive/Arbeitnow **matcher LLMs** entirely: parallel HTTP fetch + keyword-style
+    ranking only (same path as empty-matcher fallback). Fast UI; no LLM scoring on listings.
+    """
+    return os.getenv("DIRECT_JOB_FETCH_ONLY", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+    )
+
+
+def get_arbeitnow_fallback_max_pages() -> int:
+    """Pages of Arbeitnow feed to scan in direct/fallback fetch (fewer = faster)."""
+    v = int(os.getenv("ARBEITNOW_FALLBACK_MAX_PAGES", "3"))
+    return max(1, min(8, v))
+
+
+def get_resume_parser_max_output_tokens() -> int | None:
+    """Optional cap on parser completion size (can speed responses; unset = model default)."""
+    raw = os.getenv("RESUME_PARSER_MAX_OUTPUT_TOKENS", "").strip()
+    if not raw or raw == "0":
+        return None
+    return max(1024, min(32000, int(raw)))
+
+
+def get_resume_tailor_max_output_tokens() -> int | None:
+    """Optional cap on tailored resume length (unset = model default)."""
+    raw = os.getenv("RESUME_TAILOR_MAX_OUTPUT_TOKENS", "").strip()
+    if not raw or raw == "0":
+        return None
+    return max(1024, min(32000, int(raw)))

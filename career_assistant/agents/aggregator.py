@@ -10,12 +10,15 @@ import re
 from agents import Agent, Runner
 
 from career_assistant.agents.arbeitnow_matcher import match_arbeitnow_jobs
-from career_assistant.agents.job_fallback import fetch_fallback_jobs_sync
+from career_assistant.agents.job_fallback import fetch_fallback_jobs_async
 from career_assistant.agents.remotive_matcher import match_remotive_jobs
+from career_assistant.utils.agent_llm_kw import agent_kwargs_basic
 from career_assistant.utils.settings import (
-    get_agent_max_turns,
     get_aggregator_description_max_chars,
     get_aggregator_max_jobs,
+    get_direct_job_fetch_only,
+    get_job_aggregator_max_turns,
+    get_skip_job_aggregator_llm,
 )
 
 logger = logging.getLogger(__name__)
@@ -56,6 +59,19 @@ async def aggregate_jobs(profile: dict) -> list:
     merge results, then pass a slim job window to the aggregator LLM for deduplication and re-ranking.
     """
 
+    if get_direct_job_fetch_only():
+        logger.info("DIRECT_JOB_FETCH_ONLY: parallel HTTP boards only (no matcher LLMs).")
+        combined = await fetch_fallback_jobs_async(profile)
+        if not combined:
+            return []
+        combined_sorted = sorted(
+            [j for j in combined if isinstance(j, dict)],
+            key=_score_key,
+            reverse=True,
+        )
+        window = combined_sorted[: get_aggregator_max_jobs()]
+        return _fallback_aggregate(window)
+
     remotive_results, arbeitnow_results = await asyncio.gather(
         match_remotive_jobs(profile),
         match_arbeitnow_jobs(profile),
@@ -65,7 +81,7 @@ async def aggregate_jobs(profile: dict) -> list:
 
     if not combined:
         logger.info("Matcher agents returned no jobs; fetching listings directly from APIs.")
-        combined = await asyncio.to_thread(fetch_fallback_jobs_sync, profile)
+        combined = await fetch_fallback_jobs_async(profile)
     if not combined:
         return []
 
@@ -77,6 +93,10 @@ async def aggregate_jobs(profile: dict) -> list:
     max_jobs = get_aggregator_max_jobs()
     window = combined_sorted[:max_jobs]
     desc_max = get_aggregator_description_max_chars()
+
+    if get_skip_job_aggregator_llm():
+        logger.info("SKIP_JOB_AGGREGATOR_LLM set: skipping dedupe LLM, using score sort + URL dedupe.")
+        return _fallback_aggregate(window)
 
     slim: list[dict] = []
     for i, job in enumerate(window):
@@ -114,12 +134,13 @@ No markdown fences, no extra text.
     agent = Agent(
         name="JobAggregator",
         instructions=prompt,
+        **agent_kwargs_basic(),
     )
 
     result = await Runner.run(
         agent,
         "Return the JSON array of indices now.",
-        max_turns=get_agent_max_turns(),
+        max_turns=get_job_aggregator_max_turns(),
     )
 
     raw = result.final_output or ""
