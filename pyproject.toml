@@ -15,3 +15,12 @@ dependencies = [
     "python-dotenv>=1.2.2",
     "reportlab>=4.0.0",
 ]
+
+[project.scripts]
+career-assistant = "main:main"
+
+[dependency-groups]
+dev = [
+    "markdown>=3.10.2",
+    "playwright>=1.58.0",
+]
