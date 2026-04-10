@@ -1,20 +1,38 @@
-# =============================================
 # apis/arbeitnow.py
 # =============================================
-import requests
-from agents import Agent, Runner, function_tool
+
+import httpx
+from agents import function_tool
+
 
 @function_tool
-def fetch_arbeitnow_jobs():
-    url = "https://www.arbeitnow.com/api/job-board-api"
-    data = requests.get(url).json()
+def fetch_arbeitnow_jobs(search: str) -> list:
+    """
+    Fetch job listings from Arbeitnow's public API.
 
-    jobs = []
-    for job in data.get("data", []):
-        jobs.append({
-            "title": job.get("title"),
-            "company": job.get("company_name"),
-            "description": job.get("description"),
-            "url": job.get("url")
-        })
-    return jobs
+    Args:
+        search: keyword to search for (e.g. "python backend", "data engineer")
+
+    Returns:
+        A list of job dictionaries with keys:
+        slug, title, company_name, location, remote,
+        tags, job_types, description, url, created_at
+    """
+
+    url = "https://www.arbeitnow.com/api/job-board-api"
+    params = {"search": search}
+
+    try:
+        response = httpx.get(url, params=params, timeout=15)
+        response.raise_for_status()
+        data = response.json()
+
+        # Jobs are nested under "data" key
+        return data.get("data", [])
+
+    except httpx.HTTPError as e:
+        print(f"[fetch_arbeitnow_jobs] HTTP error: {e}")
+        return []
+    except Exception as e:
+        print(f"[fetch_arbeitnow_jobs] Unexpected error: {e}")
+        return []
