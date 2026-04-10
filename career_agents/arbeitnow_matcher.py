@@ -1,113 +1,217 @@
-# agents/matcher_arbeitnow.py
+# =============================================
+# career_assistant.agents.remotive_matcher
 # =============================================
 
-import json
+import logging
 import re
 
 from agents import Agent, Runner
-from apis.arbeitnow import fetch_arbeitnow_jobs
+
+from career_assistant.agent_tools.remotive import fetch_remotive_jobs, fetch_remotive_jobs_sync
+from career_assistant.agents.job_fallback import profile_search_queries
+from career_assistant.agents.matcher_shared import parse_llm_job_array
+from career_assistant.utils.llm_payload import profile_json_for_llm
+from career_assistant.utils.settings import (
+    get_job_tool_max_results,
+    get_matcher_max_turns,
+    get_matcher_min_overall_score,
+    get_matcher_min_skill_percent,
+    get_matcher_profile_json_max_chars,
+    get_remotive_reconcile_query_cap,
+)
+
+logger = logging.getLogger(__name__)
+
+_REMOTIVE_HOST = re.compile(r"remotive\.(com|io)", re.I)
+_REMOTIVE_ID_TAIL = re.compile(r"-(\d+)$")
+_REMOTIVE_ID_ONLY = re.compile(r"/(\d+)$")
 
 
-async def match_arbeitnow_jobs(profile: dict) -> list:
+def _norm_title_company(title: str, company: str) -> tuple[str, str]:
+    def n(s: str) -> str:
+        s = (s or "").lower().strip()
+        return re.sub(r"\s+", " ", s)
+
+    return (n(title), n(company))
+
+
+def _remotive_numeric_id_from_url(url: str) -> int | None:
+    """Remotive listing URLs end with ``...-jobid`` or rarely ``/jobid``; id-only paths 404 on the site."""
+    if not url or not _REMOTIVE_HOST.search(url):
+        return None
+    base = url.split("?", 1)[0].split("#", 1)[0].rstrip("/")
+    m = _REMOTIVE_ID_TAIL.search(base) or _REMOTIVE_ID_ONLY.search(base)
+    if not m:
+        return None
+    try:
+        return int(m.group(1))
+    except ValueError:
+        return None
+
+
+def _build_remotive_canonical_maps(profile: dict) -> tuple[dict[int, str], dict[tuple[str, str], str]]:
+    """Map Remotive API ``id`` and (title, company) to the canonical ``url`` (same queries as fallback; HTTP cache applies)."""
+    cap_tool = get_job_tool_max_results()
+    by_id: dict[int, str] = {}
+    by_key: dict[tuple[str, str], str] = {}
+    for q in profile_search_queries(profile)[: get_remotive_reconcile_query_cap()]:
+        for cat in ("software-dev", None):
+            batch = fetch_remotive_jobs_sync(q, cat, cap_tool)
+            for row in batch:
+                if not isinstance(row, dict):
+                    continue
+                u = str(row.get("url") or "").strip()
+                if not u:
+                    continue
+                raw_id = row.get("id")
+                try:
+                    if raw_id is not None:
+                        by_id[int(raw_id)] = u
+                except (TypeError, ValueError):
+                    pass
+                t = str(row.get("title") or "")
+                c = str(row.get("company") or row.get("company_name") or "")
+                k = _norm_title_company(t, c)
+                if k[0] and k not in by_key:
+                    by_key[k] = u
+    return by_id, by_key
+
+
+def _reconcile_remotive_job_urls(
+    jobs: list,
+    by_id: dict[int, str],
+    by_key: dict[tuple[str, str], str],
+) -> list:
+    """Replace hallucinated or truncated Remotive links with URLs from the live API index."""
+    out: list = []
+    for raw in jobs:
+        if not isinstance(raw, dict):
+            continue
+        job = dict(raw)
+        url = str(job.get("url") or "").strip()
+        src = str(job.get("source") or "")
+        is_remotive = src.strip().lower() == "remotive" or (
+            url and _REMOTIVE_HOST.search(url) is not None
+        )
+        if not is_remotive:
+            out.append(job)
+            continue
+        canonical: str | None = None
+        raw_job_id = job.get("id")
+        try:
+            if raw_job_id is not None:
+                canonical = by_id.get(int(raw_job_id))
+        except (TypeError, ValueError):
+            pass
+        if not canonical:
+            rid = _remotive_numeric_id_from_url(url)
+            if rid is not None and rid in by_id:
+                canonical = by_id[rid]
+        if not canonical:
+            k = _norm_title_company(str(job.get("title") or ""), str(job.get("company") or ""))
+            if k[0]:
+                canonical = by_key.get(k)
+        if canonical:
+            job["url"] = canonical
+        out.append(job)
+    return out
+
+
+def _instructions(profile_json: str) -> str:
+    ms = get_matcher_min_skill_percent()
+    mo = get_matcher_min_overall_score()
+    return f"""You are an expert job-matching assistant. You **must** use the **fetch_remotive_jobs** tool to load listings; do not invent jobs.
+
+    **Candidate profile (JSON):**
+    {profile_json}
+
+    **Step 1 — Call the Remotive tool (one or more times)**
+    - **Pagination:** Remotive's public API has **no page/offset**—only ``search``, ``category``, ``limit``.
+      To see more distinct listings, use **multiple tool calls** with different **search** strings (and optionally ``category=""`` for all categories). The API returns jobs sorted by **publication_date**; very old rows are already filtered server-side in the tool when dates exist.
+    - Build **search** from the profile: job title, headline, top skills, and summary keywords (e.g. "senior python backend", "kubernetes aws").
+    - **Speed:** Prefer **1–3** focused tool calls total; add another only if the first call returned clearly too few rows.
+    - Set **category** to **exactly one** slug from this list (invalid slugs are coerced to **software-dev**):
+      software-dev, data, devops, design, marketing, product, sales, customer-support,
+      finance-legal, hr, copywriting, business, teaching, medical-healthcare, legal, other.
+      Most software engineers → **software-dev**. Data/ML → **data**. Platform/SRE → **devops**.
+    - Use **limit** up to the tool maximum. If results are thin, call again with a **broader search** or **category=""** (empty string) for a wider net, or a different slug if the profile clearly fits another category.
+
+    **Step 2 — Score each returned job**
+    **a) skill_match_percentage (0–100)** — overlap of candidate skills vs job description/tags (technical skills weighted).
+    **b) overall_match_score (0–100)** — ~60% skills, ~20% seniority/title fit, ~15% role alignment, ~5% education; small bonuses/penalties.
+
+    **Step 3 — Filtering**
+    Prefer skill_match_percentage ≥ {ms} and overall_match_score ≥ {mo}.
+    If that removes almost everything, still return the **best matches you have** (do not return an empty array unless the tool truly returned no rows).
+
+    **Step 4 — Final answer (no more tool calls)**
+    Return **only** a JSON array, sorted by overall_match_score descending. Each object:
+    - title, company, location (from candidate_required_location or "Remote"),
+    - description (plain text, max 250 chars), **url** (copy **exactly** from tool output—full ``https://remotive.com/remote-jobs/...`` path; do not shorten or rewrite),
+    - **id** (integer from tool output, when present),
+    - source = "Remotive",
+    - skill_match_percentage, overall_match_score,
+    - matching_skills (array), missing_critical_skills (array), why_this_match (1–2 sentences).
+
+    Optional ```json code fence is allowed; no other prose in the final message.
     """
-    Use an agent + Arbeitnow tool to return high-quality job matches.
-    """
 
-    prompt = """You are an expert AI job matching assistant.
 
-    **Candidate Profile (structured JSON):**
-    {candidate_profile}
+def _direct_remotive_fallback(profile: dict) -> list:
+    """Same HTTP as the tool, without an LLM—used when the agent returns no usable JSON or empty matches."""
+    cap_tool = get_job_tool_max_results()
+    seen: set[str] = set()
+    out: list = []
+    for q in profile_search_queries(profile)[:4]:
+        for cat in ("software-dev", None):
+            batch = fetch_remotive_jobs_sync(q, cat, cap_tool)
+            for row in batch:
+                if not isinstance(row, dict):
+                    continue
+                u = str(row.get("url") or "").strip()
+                if not u or u in seen:
+                    continue
+                seen.add(u)
+                loc = row.get("candidate_required_location") or "Remote"
+                out.append(
+                    {
+                        "title": row.get("title") or "Job",
+                        "company": row.get("company") or row.get("company_name") or "-",
+                        "location": str(loc),
+                        "description": str(row.get("description") or "")[:400],
+                        "url": u,
+                        "source": "Remotive",
+                        "overall_match_score": 70,
+                        "skill_match_percentage": 70,
+                        "matching_skills": [],
+                        "missing_critical_skills": [],
+                        "why_this_match": "Live Remotive listing (direct fetch; agent returned no scored rows).",
+                    }
+                )
+                if len(out) >= 18:
+                    return out
+    return out
 
-    **Task:**
-    1. Fetch active job listings from Arbeitnow using the public API:
-    - Endpoint: https://www.arbeitnow.com/api/job-board-api
-    - Use the Arbeitnow tool with a `search` keyword derived from the candidate's profile.
-    - Run 2-3 searches with different relevant keywords to maximize coverage
-        (e.g. "python backend", "django developer", "software engineer").
-    - Jobs are returned inside a `"data"` array. Each job has these fields:
-        - `title`
-        - `company_name`
-        - `location`
-        - `remote` (boolean — true/false)
-        - `tags` (list of skill/category tags)
-        - `job_types` (list e.g. ["Full-time", "professional / experienced"])
-        - `description` (HTML string — parse it as plain text for matching)
-        - `url` (direct job link)
-        - `created_at` (unix timestamp)
 
-    2. For each job, calculate **two separate metrics**:
-
-    **a) Skill Match Percentage (0-100%)**
-        - Purely based on the candidate's skills vs. skills/tools/technologies
-            mentioned in the job description, tags, or requirements.
-        - Count how many of the candidate's skills appear (exact or strong semantic match).
-        - Formula: (Number of matched skills / Total candidate skills) × 100
-        - Prioritize hard/technical skills.
-
-    **b) Overall Match Score (0-100)**
-        - Holistic score combining:
-            - Skill Match Percentage (60% weight)
-            - Experience & Seniority Fit (20% weight)
-            - Role & Responsibility Alignment (15% weight)
-            - Education/Certification relevance (5% weight)
-
-    - Add **bonus points** (max +10): Strong tool overlap, tag alignment, nice-to-have skills covered.
-    - Apply **penalties** (max -15): Missing critical/must-have skills, major seniority mismatch.
-
-    3. **Filtering Rule**: Only include jobs where **Skill Match Percentage ≥ 70%** AND **Overall Match Score ≥ 70**.
-
-    4. For each qualifying job, output a dictionary with these keys:
-
-    - `title`
-    - `company`               ← use `company_name` from the API
-    - `location`              ← use `location` field, or "Fully Remote" if `remote` is true
-    - `description`           ← concise plain-text summary, max 250 characters
-    - `url`
-    - `source`                ← always set to "Arbeitnow"
-    - `skill_match_percentage`
-    - `overall_match_score`
-    - `matching_skills`       (list)
-    - `missing_critical_skills` (list, if any)
-    - `why_this_match`        (1-2 sentence explanation)
-
-    5. Return the final result as a **valid JSON array**, sorted by `overall_match_score` descending (highest first).
-
-    Example output structure:
-    ```json
-    [
-        {
-        "title": "Senior Python Backend Engineer",
-        "company": "Stripe",
-        "location": "Fully Remote",
-        "description": "Build scalable payment systems using Python and Django...",
-        "url": "https://www.arbeitnow.com/jobs/companies/stripe/senior-python-backend-engineer-123456",
-        "source": "Arbeitnow",
-        "skill_match_percentage": 85,
-        "overall_match_score": 92,
-        "matching_skills": ["Python", "Django", "AWS", "PostgreSQL", "Git"],
-        "missing_critical_skills": ["Kubernetes"],
-        "why_this_match": "Very strong skill coverage (85%) with excellent alignment to 6+ years of backend experience."
-        }
-    ]
-    ```
-    """
-
+async def match_remotive_jobs(profile: dict) -> list:
+    """Agent uses ``fetch_remotive_jobs`` as a tool, then returns scored JSON matches."""
+    profile_json = profile_json_for_llm(profile, get_matcher_profile_json_max_chars())
     agent = Agent(
-        name="ArbeitnowMatcher",
-        instructions=prompt.replace("{candidate_profile}", json.dumps(profile, indent=2)),
-        tools=[fetch_arbeitnow_jobs],
+        name="RemotiveMatcher",
+        instructions=_instructions(profile_json),
+        tools=[fetch_remotive_jobs],
     )
 
-    result = await Runner.run(agent, "Find and match jobs for this candidate.")
+    result = await Runner.run(
+        agent,
+        "Use fetch_remotive_jobs with search and category derived from the profile, then return the final JSON array of scored matches.",
+        max_turns=get_matcher_max_turns(),
+    )
 
-    raw = result.final_output or ""
+    parsed = parse_llm_job_array(result.final_output or "")
+    if parsed:
+        by_id, by_key = _build_remotive_canonical_maps(profile)
+        return _reconcile_remotive_job_urls(parsed, by_id, by_key)
 
-    match = re.search(r"```(?:json)?\s*([\s\S]+?)```", raw)
-    clean = match.group(1).strip() if match else raw.strip()
-
-    try:
-        parsed = json.loads(clean)
-    except (TypeError, json.JSONDecodeError):
-        return []
-
-    return parsed if isinstance(parsed, list) else []
+    logger.info("Remotive matcher: no scored JSON from agent; running direct Remotive HTTP fallback.")
+    return _direct_remotive_fallback(profile)
