@@ -5,7 +5,7 @@ import json
 import re
 
 from agents import Agent, Runner
-from apis.remotive import fetch_remotive_jobs
+from tools.remotive_tool import fetch_remotive_jobs
 
 
 async def match_remotive_jobs(profile: dict) -> list:

@@ -5,7 +5,7 @@ import json
 import re
 
 from agents import Agent, Runner
-from apis.arbeitnow import fetch_arbeitnow_jobs
+from tools.arbeitnow_tool import fetch_arbeitnow_jobs
 
 
 async def match_arbeitnow_jobs(profile: dict) -> list:
